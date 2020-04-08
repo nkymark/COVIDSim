@@ -361,14 +361,23 @@ tau_inc = str2double( get( handles.tau_inc, 'String' ) );
 tau_rec = str2double( get( handles.tau_rec, 'String' ) );
 simTime = str2double( get( handles.simTime, 'String' ) );
 
+D_init  = 0;
+R_init  = 0;
+I_init  = n;
+E_init  = 20 * I_init;
+S_init  = N - I_init - E_init - D_init - R_init;
+
+% D_init  = 53;
+% R_init  = 759;
+% I_init  = 1428; %n;
+% E_init  = 880; %20 * I_init;
+% S_init  = N - I_init - E_init - D_init - R_init;
+% R0      = 2.75;
+
 alpha   = 1 / tau_inc;
 gamma   = 1 / tau_rec;
 beta    = R0 * gamma;
 delta   = gamma;
-
-I_init  = n;
-E_init  = 20 * I_init;
-S_init  = N - I_init - E_init;
 
 sigma = get( handles.Sigma, 'Value' )';
 tau_sigmapre  = str2double( get( handles.tau_sigmapre, 'String' ) );
@@ -395,6 +404,8 @@ assignin( 'base', 'beta', beta );
 assignin( 'base', 'I_init', I_init );
 assignin( 'base', 'E_init', E_init );
 assignin( 'base', 'S_init', S_init );
+assignin( 'base', 'D_init', D_init );
+assignin( 'base', 'R_init', R_init );
 assignin( 'base', 'sigma', sigma );
 assignin( 'base', 'tau_sigmapre', tau_sigmapre );
 assignin( 'base', 'tau_sigmapost', tau_sigmapost );
@@ -532,7 +543,7 @@ if handles.resetCount >= 2
         set( handles.n, 'String', '2' );
         handles.firstCase = 10;
     elseif stockData == 3 % NI
-        set( handles.N, 'String', '2000000' );
+        set( handles.N, 'String', '1880000' );
         set( handles.Elderly, 'Value', 0.18 );
         set( handles.ElderlyOut, 'String', '18%' );
         set( handles.Recover, 'Value', 0.94 );
@@ -587,7 +598,7 @@ if stockData > 1
 
     if strcmp( country, 'NorthernIreland' )
         dataConfirmed = importdata( 'covid-19-totals-northern-ireland.csv' );
-        yCases        = dataConfirmed.data(:,2:3);
+        yCases        = [dataConfirmed.data(:,2:3) zeros( size( dataConfirmed.data, 1 ),1 )];
         Date          = {dataConfirmed.textdata{:,1}};
     else
         dataConfirmed = importdata( 'time_series_covid19_confirmed_global.csv' );
@@ -600,10 +611,11 @@ if stockData > 1
         yCases     = [yCases; dataDeaths.data(countryLoc - 1, 3:end)];
 %         yDeathNew  = dataDeaths.data(countryLoc - 1, 3:end);
         
-%         dataRecovered  = importdata( 'time_series_covid19_recovered_global.csv' );
-%         countryLoc     = find( strcmp( {dataRecovered.textdata{:,2}}, country ) & strcmp( {dataRecovered.textdata{:,1}}, '' ) );
-%         yCases         = [yCases; dataRecovered.data(countryLoc - 1, 3:end)];
+        dataRecovered  = importdata( 'time_series_covid19_recovered_global.csv' );
+        countryLoc     = find( strcmp( {dataRecovered.textdata{:,2}}, country ) & strcmp( {dataRecovered.textdata{:,1}}, '' ) );
+        yCases         = [yCases; [0 diff( dataRecovered.data(countryLoc - 1, 3:end) )]];
 %         yRecoveredNew  = dataRecovered.data(countryLoc - 1, 3:end);
+%         yRecoveredDiff = [0 diff( dataRecovered.data(countryLoc - 1, 3:end) )];
         
         yCases = yCases';
         Date   = {dataConfirmed.textdata{1,5:end}};
@@ -627,7 +639,7 @@ if stockData > 1
     
     subplot( 1,1,1, 'Parent', handles.axes2 );
     hold on;
-    plot( (1:length( yCases(:,1))), yCases(:,1), '*', 'Linewidth', 1 );
+    plot( (1:length( yCases(:,1))), yCases(:,1) - yCases(:,3), '*', 'Linewidth', 1 );
     plot( (1:length( yCases(:,2))), yCases(:,2), 'o', 'Linewidth', 1 );
 %     plot( (1:length( yCases(:,3)))-firstCase, yCases(:,3), '+', 'Linewidth', 1 );
     xlabel( 'Days' );
