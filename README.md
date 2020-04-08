@@ -6,4 +6,5 @@ Data are obtained from the following sources:
 * [2019 Novel Coronavirus COVID-19 (2019-nCoV) Data Repository by Johns Hopkins CSSE](https://github.com/CSSEGISandData/COVID-19)
 * [COVID-19 UK Historical Data](https://github.com/tomwhite/covid-19-uk-data)
 
-More preliminary details about this work can be found in our preprint on arXiv [here](https://arxiv.org/abs/2004.01974).
+More preliminary details about this work can be found in our preprint on arXiv [here](https://arxiv.org/abs/2004.01974). As such, if you use this simulation package in your research, please cite the following:
+* K. Y. Ng and M. M. Gui, COVID-19: Development of A Robust Mathematical Model and Simulation Package with Consideration for Ageing Population and Time Delay for Control Action and Resusceptibility. ([arXiv:2004.01974](https://arxiv.org/abs/2004.01974))
