@@ -53,6 +53,15 @@ function covid_OpeningFcn(hObject, eventdata, handles, varargin)
 % varargin   command line arguments to covid (see VARARGIN)
 clc;
 
+address = 'https://raw.githubusercontent.com/CSSEGISandData/COVID-19/master/csse_covid_19_data/csse_covid_19_time_series/time_series_covid19_confirmed_global.csv';
+websave( 'time_series_covid19_confirmed_global.csv', address );
+address = 'https://raw.githubusercontent.com/CSSEGISandData/COVID-19/master/csse_covid_19_data/csse_covid_19_time_series/time_series_covid19_deaths_global.csv';
+websave( 'time_series_covid19_deaths_global.csv', address );
+address = 'https://raw.githubusercontent.com/CSSEGISandData/COVID-19/master/csse_covid_19_data/csse_covid_19_time_series/time_series_covid19_recovered_global.csv';
+websave( 'time_series_covid19_recovered_global.csv', address );
+address = 'https://raw.githubusercontent.com/tomwhite/covid-19-uk-data/master/data/covid-19-totals-northern-ireland.csv';
+websave( 'covid-19-totals-northern-ireland.csv', address );
+
 handles.Pop     = 66000000;
 handles.oldPop  = 0.18;
 handles.rRate   = 0.99;
@@ -62,6 +71,7 @@ handles.initInf = 5;
 handles.t_inc   = 5.1;
 % handles.t_inf   = 6.5;
 handles.t_rec   = 18.8;
+handles.tol     = 0.05;
 handles.alpha   = 1 / handles.t_inc;
 handles.gamma   = 1 / handles.t_rec;
 handles.beta    = handles.R * handles.gamma;
@@ -94,7 +104,6 @@ betaStr  = sprintf( '%.3f', handles.beta );
 set( handles.Alpha, 'String', alphaStr );
 set( handles.Gamma, 'String', gammaStr );
 set( handles.Beta, 'String', betaStr );
-
 
 handles.sigma = 0;
 handles.t_sigmapre  = 0;
@@ -230,7 +239,6 @@ function R0_Callback(hObject, eventdata, handles)
 %        str2double(get(hObject,'String')) returns contents of R0 as a double
 handles.R = str2double( get( hObject, 'String' ) );
 set( handles.Beta, 'String', num2str( handles.R / handles.t_rec ) );
-
 guidata( hObject, handles );
 
 % --- Executes during object creation, after setting all properties.
@@ -254,7 +262,6 @@ function tau_inc_Callback(hObject, eventdata, handles)
 %        str2double(get(hObject,'String')) returns contents of tau_inc as a double
 handles.t_inc = str2double( get( hObject, 'String' ) );
 set( handles.Alpha, 'String', num2str( 1 / handles.t_inc ) );
-
 guidata( hObject, handles );
 
 % --- Executes during object creation, after setting all properties.
@@ -302,7 +309,6 @@ function tau_rec_Callback(hObject, eventdata, handles)
 handles.t_rec = str2double( get( hObject, 'String' ) );
 set( handles.Gamma, 'String', num2str( 1 / handles.t_rec ) );
 set( handles.Beta, 'String', num2str( handles.R / handles.t_rec ) );
-
 guidata( hObject, handles );
 
 % --- Executes during object creation, after setting all properties.
@@ -357,22 +363,17 @@ rOldRate= 1 - dOldRate;
 
 n       = str2num( get( handles.n, 'String' ) );
 tau_inc = str2double( get( handles.tau_inc, 'String' ) );
-% tau_inf = str2double( get( handles.tau_inf, 'String' ) );
 tau_rec = str2double( get( handles.tau_rec, 'String' ) );
 simTime = str2double( get( handles.simTime, 'String' ) );
+
+Hi = 1 + handles.tol;
+Lo = 1 - handles.tol;
 
 D_init  = 0;
 R_init  = 0;
 I_init  = n;
 E_init  = 20 * I_init;
 S_init  = N - I_init - E_init - D_init - R_init;
-
-% D_init  = 53;
-% R_init  = 759;
-% I_init  = 1428; %n;
-% E_init  = 880; %20 * I_init;
-% S_init  = N - I_init - E_init - D_init - R_init;
-% R0      = 2.75;
 
 alpha   = 1 / tau_inc;
 gamma   = 1 / tau_rec;
@@ -386,36 +387,38 @@ tau_sigmapost = str2double( get( handles.tau_sigmapost, 'String' ) );
 xi     = get( handles.Resusceptible, 'Value' )/100;
 tau_xi = str2double( get( handles.tau_xi, 'String' ) );
 
-assignin( 'base', 'N', N );
-assignin( 'base', 'n', n );
-assignin( 'base', 'oldPop', oldPop );
-assignin( 'base', 'otherPop', otherPop );
-assignin( 'base', 'rRate', rRate );
-assignin( 'base', 'dRate', dRate );
-assignin( 'base', 'dOldRate', dOldRate );
-assignin( 'base', 'rOldRate', rOldRate );
-assignin( 'base', 'tau_inc', tau_inc );
-% assignin( 'base', 'tau_inf', tau_inf );
-assignin( 'base', 'tau_rec', tau_rec );
-assignin( 'base', 'alpha', alpha );
-assignin( 'base', 'gamma', gamma );
-assignin( 'base', 'delta', delta );
-assignin( 'base', 'beta', beta );
+matA = [0 0 0 0 0; 
+    0 -alpha 0 0 0; 
+    0 alpha -gamma-delta*(dOldRate*oldPop+dRate*otherPop) 0 0;
+    0 0 gamma 0 0;
+    0 0 delta*(dOldRate*oldPop+dRate*otherPop) 0 0];
+matB1 = [sigma*beta/N; -sigma*beta/N; 0; 0; 0];
+matB2 = [xi; 0; 0; -xi; 0];
+matB3 = [-beta/N; beta/N; 0; 0; 0];
+matB3Hi = matB3*Hi;
+matB3Lo = matB3*Lo;
+matC  = eye( 5 );
+
+assignin( 'base', 'matA', matA );
+assignin( 'base', 'matB1', matB1 );
+assignin( 'base', 'matB2', matB2 );
+assignin( 'base', 'matB3', matB3 );
+assignin( 'base', 'matB3Hi', matB3Hi );
+assignin( 'base', 'matB3Lo', matB3Lo );
+assignin( 'base', 'matC', matC );
+
 assignin( 'base', 'I_init', I_init );
 assignin( 'base', 'E_init', E_init );
 assignin( 'base', 'S_init', S_init );
 assignin( 'base', 'D_init', D_init );
 assignin( 'base', 'R_init', R_init );
-assignin( 'base', 'sigma', sigma );
 assignin( 'base', 'tau_sigmapre', tau_sigmapre );
 assignin( 'base', 'tau_sigmapost', tau_sigmapost );
-assignin( 'base', 'xi', xi );
 assignin( 'base', 'tau_xi', tau_xi );
 
-
-load_system( 'COVID_mod.mdl' );
-out = sim( 'COVID_mod.mdl', simTime );
-close_system( 'COVID_mod.mdl' );
+load_system( 'COVID_mod' );
+out = sim( 'COVID_mod', simTime );
+close_system( 'COVID_mod' );
 
 assignin( 'base', 'out', out );
 
@@ -427,9 +430,9 @@ if handles.colourCount > 6
     handles.colourCount = handles.colourCount - 6;
 end
 
-plot( out.I.Time+handles.firstCase, out.I.Data, 'Linewidth', 2 );
+plot( out.I.Time+handles.firstCase, out.I.Data, 'Linewidth', 3 );
 jbfill( [out.I.Time+handles.firstCase]', [out.IHi.Data]', [out.ILo.Data]', colour(handles.colourCount) );
-plot( out.D.Time+handles.firstCase, out.D.Data, 'Linewidth', 2 );
+plot( out.D.Time+handles.firstCase, out.D.Data, 'Linewidth', 3 );
 jbfill( [out.D.Time+handles.firstCase]', [out.DHi.Data]', [out.DLo.Data]', colour(handles.colourCount+1) );
 xlabel( 'Days' );
 ylabel( 'Number of Cases' );
@@ -438,19 +441,19 @@ textStr = sprintf( '$$ \\begin{array}{l} R_0 = %.1f, \\beta = %.3f, \\alpha = %.
 text( out.I.Time( find( out.I.Data == max( out.I.Data ) ) ) + 0.05*simTime, 0.95 * max( out.I.Data ), textStr, 'Interpreter', 'latex' );
 
 handles.legendStr1{end+1,1} = sprintf( 'Infected, R_0 = %.1f (Model Case %d)', R0, handles.count );
-handles.legendStr1{end+1,1} = sprintf( 'Infected, R_0 = %.1f\\pm5%% (Model Case %d)', R0, handles.count );
+handles.legendStr1{end+1,1} = sprintf( 'Infected, R_0 = %.1f (95%% CI) (Model Case %d)', R0, handles.count );
 handles.legendStr1{end+1,1} = sprintf( 'Cum. Deaths, R_0 = %.1f (Model Case %d)', R0, handles.count );
-handles.legendStr1{end+1,1} = sprintf( 'Cum. Deaths, R_0 = %.1f\\pm5%% (Model Case %d)', R0, handles.count );
+handles.legendStr1{end+1,1} = sprintf( 'Cum. Deaths, R_0 = %.1f (95%% CI) (Model Case %d)', R0, handles.count );
 
 legend( handles.legendStr1 );
 grid on;
-axis( [0 simTime -inf inf] );
+axis( [-inf simTime -inf inf] );
 
 if get( handles.stockData, 'Value' ) > 1
     subplot( 1,1,1, 'Parent', handles.axes2 );
-    plot( out.I.Time+handles.firstCase, out.I.Data, 'Linewidth', 2 );
+    plot( out.I.Time+handles.firstCase, out.I.Data, 'Linewidth', 3 );
     jbfill( [out.I.Time+handles.firstCase]', [out.IHi.Data]', [out.ILo.Data]', colour(handles.colourCount) );
-    plot( out.D.Time+handles.firstCase, out.D.Data, 'Linewidth', 2 );
+    plot( out.D.Time+handles.firstCase, out.D.Data, 'Linewidth', 3 );
     jbfill( [out.D.Time+handles.firstCase]', [out.DHi.Data]', [out.DLo.Data]', colour(handles.colourCount+1) );
 %     plot( out.R, 'Linewidth', 2 );
     xlabel( 'Days' );
@@ -458,23 +461,18 @@ if get( handles.stockData, 'Value' ) > 1
     title( ' ' );
     
     handles.legendStr2{end+1,1} = sprintf( 'Infected, R_0 = %.1f (Model Case %d)', R0, handles.count );
-    handles.legendStr2{end+1,1} = sprintf( 'Infected, R_0 = %.1f\\pm5%% (Model Case %d)', R0, handles.count ); 
+    handles.legendStr2{end+1,1} = sprintf( 'Infected, R_0 = %.1f (95%% CI) (Model Case %d)', R0, handles.count ); 
     handles.legendStr2{end+1,1} = sprintf( 'Cum. Deaths, R_0 = %.1f (Model Case %d)', R0, handles.count );
-    handles.legendStr2{end+1,1} = sprintf( 'Cum. Deaths, R_0 = %.1f\\pm5%% (Model Case %d)', R0, handles.count ); 
+    handles.legendStr2{end+1,1} = sprintf( 'Cum. Deaths, R_0 = %.1f (95%% CI) (Model Case %d)', R0, handles.count ); 
     
     legend( handles.legendStr2 );
-    axis( [0 handles.sizeData+10  0 handles.maxData*2] );
+    axis( [-inf handles.sizeData+10  0 handles.maxData*2] );
 end
 
 handles.count = handles.count + 1;
 handles.colourCount = handles.colourCount + 2;
-
 handles.resetCount = 0;
-
-
 guidata( hObject, handles );
-
-
 
 
 function simTime_Callback(hObject, eventdata, handles)
@@ -498,8 +496,6 @@ if ispc && isequal(get(hObject,'BackgroundColor'), get(0,'defaultUicontrolBackgr
 end
 
 
-
-
 % --- Executes on button press in CLA.
 function CLA_Callback(hObject, eventdata, handles)
 % hObject    handle to CLA (see GCBO)
@@ -513,12 +509,9 @@ handles.colourCount = 1;
 guidata(hObject, handles);
 handles.legendStr1 = {};
 handles.legendStr2 = {};
-
+handles.tol = 0.05;
 handles.resetCount = handles.resetCount + 1;
-
 guidata( hObject, handles );
-
-
 
 
 % --- Executes on selection change in stockData.
@@ -550,8 +543,9 @@ if handles.resetCount >= 2
         set( handles.RecoverOut, 'String', '94%' );
         set( handles.ElderlyDeath, 'Value', 0.12 );
         set( handles.ElderlyDeathOut, 'String', '12%' );
-        set( handles.R0, 'String', '4.9' );
+        set( handles.R0, 'String', '5' );
         set( handles.n, 'String', '3' );
+        handles.tol = 0.03;
         handles.firstCase = 9;
     elseif stockData == 4 % Italy
         set( handles.N, 'String', '60500000' );
@@ -572,8 +566,9 @@ if handles.resetCount >= 2
         set( handles.RecoverOut, 'String', '98%' );
         set( handles.ElderlyDeath, 'Value', 0.04 );
         set( handles.ElderlyDeathOut, 'String', '4%' );
-        set( handles.R0, 'String', '5.1' );
+        set( handles.R0, 'String', '5.2' );
         set( handles.n, 'String', '4' );
+        handles.tol = 0.03;
         handles.firstCase = 0;
     elseif stockData == 6 % Sweden
         set( handles.N, 'String', '10500000' );
@@ -604,18 +599,14 @@ if stockData > 1
         dataConfirmed = importdata( 'time_series_covid19_confirmed_global.csv' );
         countryLoc    = find( strcmp( {dataConfirmed.textdata{:,2}}, country ) & strcmp( {dataConfirmed.textdata{:,1}}, '' ) );
         yCases        = dataConfirmed.data(countryLoc - 1, 3:end);
-%         yConfirmedNew = dataConfirmed.data(countryLoc - 1, 3:end);
         
         dataDeaths = importdata( 'time_series_covid19_deaths_global.csv' );
         countryLoc = find( strcmp( {dataDeaths.textdata{:,2}}, country ) & strcmp( {dataDeaths.textdata{:,1}}, '' ) );
         yCases     = [yCases; dataDeaths.data(countryLoc - 1, 3:end)];
-%         yDeathNew  = dataDeaths.data(countryLoc - 1, 3:end);
         
         dataRecovered  = importdata( 'time_series_covid19_recovered_global.csv' );
         countryLoc     = find( strcmp( {dataRecovered.textdata{:,2}}, country ) & strcmp( {dataRecovered.textdata{:,1}}, '' ) );
         yCases         = [yCases; [0 diff( dataRecovered.data(countryLoc - 1, 3:end) )]];
-%         yRecoveredNew  = dataRecovered.data(countryLoc - 1, 3:end);
-%         yRecoveredDiff = [0 diff( dataRecovered.data(countryLoc - 1, 3:end) )];
         
         yCases = yCases';
         Date   = {dataConfirmed.textdata{1,5:end}};
@@ -635,7 +626,7 @@ if stockData > 1
     handles.legendStr1{end+1,1} = sprintf( 'Infected (%s)', country );
     handles.legendStr1{end+1,1} = sprintf( 'Cumulated Deaths (%s)', country );
     legend( handles.legendStr1 );
-    axis( [0 inf 0 inf] );
+    axis( [-inf inf 0 inf] );
     
     subplot( 1,1,1, 'Parent', handles.axes2 );
     hold on;
@@ -653,7 +644,7 @@ if stockData > 1
     
     handles.maxData  = max( yCases(:,1) );
     handles.sizeData = length( yCases(:,1) );
-    axis( [0 handles.sizeData+10  0 handles.maxData*2] );
+    axis( [-inf handles.sizeData+10  0 handles.maxData*2] );
 end
 
 guidata( hObject, handles );
@@ -694,7 +685,6 @@ if isequal(get(hObject,'BackgroundColor'), get(0,'defaultUicontrolBackgroundColo
 end
 
 
-
 function tau_sigmapre_Callback(hObject, eventdata, handles)
 % hObject    handle to tau_sigmapre (see GCBO)
 % eventdata  reserved - to be defined in a future version of MATLAB
@@ -720,7 +710,6 @@ if ispc && isequal(get(hObject,'BackgroundColor'), get(0,'defaultUicontrolBackgr
 end
 
 
-
 function tau_sigmapost_Callback(hObject, eventdata, handles)
 % hObject    handle to tau_sigmapost (see GCBO)
 % eventdata  reserved - to be defined in a future version of MATLAB
@@ -729,7 +718,6 @@ function tau_sigmapost_Callback(hObject, eventdata, handles)
 % Hints: get(hObject,'String') returns contents of tau_sigmapost as text
 %        str2double(get(hObject,'String')) returns contents of tau_sigmapost as a double
 handles.t_sigmapost = str2double( get( hObject, 'String' ) );
-
 guidata( hObject, handles );
 
 % --- Executes during object creation, after setting all properties.
@@ -768,7 +756,6 @@ if isequal(get(hObject,'BackgroundColor'), get(0,'defaultUicontrolBackgroundColo
 end
 
 
-
 function tau_xi_Callback(hObject, eventdata, handles)
 % hObject    handle to tau_xi (see GCBO)
 % eventdata  reserved - to be defined in a future version of MATLAB
@@ -798,13 +785,15 @@ function plotFigure_Callback(hObject, eventdata, handles)
 % hObject    handle to plotFigure (see GCBO)
 % eventdata  reserved - to be defined in a future version of MATLAB
 % handles    structure with handles and user data (see GUIDATA)
-% scrsz = get( 0,'ScreenSize' ); scrsz = scrsz(3:4);
-plotHandle1 = figure;
+scrsz = get( 0,'ScreenSize' ); scrsz = scrsz(3:4);
+plotHandle1 = figure( 'position', [scrsz(1) / 2.4, scrsz(1) / 3.6, scrsz(1) / 1.8, scrsz(1) / 2.4],...
+    'NumberTitle', 'off' );
 existing   = findobj( handles.axes1, 'Type', 'axes' );
 copyobj( existing, plotHandle1 );
-legend( handles.legendStr1 );
+legend( handles.legendStr1 ); %, 'Location', 'southoutside' );
 
-plotHandle2 = figure;
+plotHandle2 = figure( 'position', [scrsz(1) / 2.4, scrsz(1) / 3.6, scrsz(1) / 1.8, scrsz(1) / 2.4],...
+    'NumberTitle', 'off' );
 existing   = findobj( handles.axes2, 'Type', 'axes' );
 copyobj( existing, plotHandle2 );
-legend( handles.legendStr2 );
+legend( handles.legendStr2 ); %, 'Location', 'southoutside' );
