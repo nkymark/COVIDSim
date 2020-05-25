@@ -22,7 +22,7 @@ function varargout = covid(varargin)
 
 % Edit the above text to modify the response to help covid
 
-% Last Modified by GUIDE v2.5 01-Apr-2020 17:44:44
+% Last Modified by GUIDE v2.5 24-May-2020 19:39:17
 
 % Begin initialization code - DO NOT EDIT
 gui_Singleton = 1;
@@ -46,11 +46,6 @@ end
 
 % --- Executes just before covid is made visible.
 function covid_OpeningFcn(hObject, eventdata, handles, varargin)
-% This function has no output args, see OutputFcn.
-% hObject    handle to figure
-% eventdata  reserved - to be defined in a future version of MATLAB
-% handles    structure with handles and user data (see GUIDATA)
-% varargin   command line arguments to covid (see VARARGIN)
 clc;
 
 address = 'https://raw.githubusercontent.com/CSSEGISandData/COVID-19/master/csse_covid_19_data/csse_covid_19_time_series/time_series_covid19_confirmed_global.csv';
@@ -62,65 +57,46 @@ websave( 'time_series_covid19_recovered_global.csv', address );
 address = 'https://raw.githubusercontent.com/tomwhite/covid-19-uk-data/master/data/covid-19-totals-northern-ireland.csv';
 websave( 'covid-19-totals-northern-ireland.csv', address );
 
-handles.Pop     = 66000000;
-handles.oldPop  = 0.18;
-handles.rRate   = 0.99;
-handles.dOldRate= 0.1;
-handles.R       = 2.4;
-handles.initInf = 5;
-handles.t_inc   = 5.1;
-% handles.t_inf   = 6.5;
-handles.t_rec   = 18.8;
-handles.tol     = 0.05;
-handles.alpha   = 1 / handles.t_inc;
-handles.gamma   = 1 / handles.t_rec;
-handles.beta    = handles.R * handles.gamma;
-
 set( handles.stockData, 'Value', 1 );
 handles.stockDataStr = {'United Kingdom', 'NorthernIreland', 'Italy', 'Korea, South', 'Sweden'};
 handles.legendStr1 = {};
 handles.legendStr2 = {};
 
-set( handles.N, 'String', num2str( handles.Pop ) );
-set( handles.R0, 'String', num2str( handles.R ) );
-set( handles.n, 'String', num2str( handles.initInf ) );
-set( handles.tau_inc, 'String', num2str( handles.t_inc ) );
-% set( handles.tau_inf, 'String', num2str( handles.t_inf ) );
-set( handles.tau_rec, 'String', num2str( handles.t_rec ) );
+set( handles.N, 'String', num2str( 1000000 ) );
+set( handles.R0, 'String', num2str( 2.5 ) );
+set( handles.n, 'String', num2str( 5 ) );
+set( handles.tau_inc, 'String', num2str( 5.1 ) );
+set( handles.tau_rec, 'String', num2str( 18.8 ) );
 set( handles.simTime, 'String', num2str( 500 ) );
 
-set( handles.Elderly, 'Value', handles.oldPop );
-set( handles.ElderlyOut, 'String', sprintf( '%.0f%s', handles.oldPop*100, '%' ) );
+set( handles.Elderly, 'Value', 0.15 );
+set( handles.ElderlyOut, 'String', sprintf( '%.0f%s', 15, '%' ) );
 
-set( handles.Recover, 'Value', handles.rRate );
-set( handles.RecoverOut, 'String', sprintf( '%.0f%s', handles.rRate*100, '%' ) );
+set( handles.Recover, 'Value', 0.9 );
+set( handles.RecoverOut, 'String', sprintf( '%.0f%s', 90, '%' ) );
 
-set( handles.ElderlyDeath, 'Value', handles.dOldRate );
-set( handles.ElderlyDeathOut, 'String', sprintf( '%.0f%s', handles.dOldRate*100, '%' ) );
+set( handles.ElderlyDeath, 'Value', 0.15 );
+set( handles.ElderlyDeathOut, 'String', sprintf( '%.0f%s', 15, '%' ) );
 
-alphaStr = sprintf( '%.3f', handles.alpha );
-gammaStr = sprintf( '%.3f', handles.gamma );
-betaStr  = sprintf( '%.3f', handles.beta );
+Delta = (1/18.8) * (0.15*0.15 + 0.1*0.85 );
+alphaStr = sprintf( '%.2f', 1/5.1 );
+gammaStr = sprintf( '%.2f', 1/18.8);
+betaStr  = sprintf( '%.2f', 2.5 * ((1/18.8) + Delta ) );
 set( handles.Alpha, 'String', alphaStr );
 set( handles.Gamma, 'String', gammaStr );
 set( handles.Beta, 'String', betaStr );
 
-handles.sigma = 0;
-handles.t_sigmapre  = 0;
-handles.t_sigmapost = 0;
+set( handles.Sigma, 'Value', 0 );
+set( handles.SigmaOut, 'String', sprintf( '%.0f%s', 0, '%' ) );
 
-set( handles.Sigma, 'Value', handles.sigma );
-set( handles.SigmaOut, 'String', sprintf( '%.0f%s', handles.sigma*100, '%' ) );
+set( handles.tau_sigmapre, 'String', num2str( 0 ) );
+set( handles.tau_sigmapost, 'String', num2str( 0 ) );
 
-set( handles.tau_sigmapre, 'String', num2str( handles.t_sigmapre ) );
-set( handles.tau_sigmapost, 'String', num2str( handles.t_sigmapost ) );
+set( handles.Resusceptible, 'Value', 0 );
+set( handles.ResusceptibleOut, 'String', sprintf( '%.2f%s', 0, '%' ) );
+set( handles.tau_xi, 'String', num2str( 0 ) );
 
-handles.xi   = 0;
-handles.t_xi = 0;
-set( handles.Resusceptible, 'Value', handles.xi );
-set( handles.ResusceptibleOut, 'String', sprintf( '%.2f%s', handles.xi, '%' ) );
-set( handles.tau_xi, 'String', num2str( handles.t_xi ) );
-
+handles.firstCase   = 0;
 handles.count       = 1;
 handles.colourCount = 1;
 handles.resetCount  = 2;
@@ -136,218 +112,113 @@ guidata(hObject, handles);
 
 % --- Outputs from this function are returned to the command line.
 function varargout = covid_OutputFcn(hObject, eventdata, handles)
-% varargout  cell array for returning output args (see VARARGOUT);
-% hObject    handle to figure
-% eventdata  reserved - to be defined in a future version of MATLAB
-% handles    structure with handles and user data (see GUIDATA)
-
 % Get default command line output from handles structure
 varargout{1} = handles.output;
 
 function N_Callback(hObject, eventdata, handles)
-% hObject    handle to N (see GCBO)
-% eventdata  reserved - to be defined in a future version of MATLAB
-% handles    structure with handles and user data (see GUIDATA)
 
-% Hints: get(hObject,'String') returns contents of N as text
-%        str2double(get(hObject,'String')) returns contents of N as a double
 
 % --- Executes during object creation, after setting all properties.
 function N_CreateFcn(hObject, eventdata, handles)
-% hObject    handle to N (see GCBO)
-% eventdata  reserved - to be defined in a future version of MATLAB
-% handles    empty - handles not created until after all CreateFcns called
-
-% Hint: edit controls usually have a white background on Windows.
-%       See ISPC and COMPUTER.
 if ispc && isequal(get(hObject,'BackgroundColor'), get(0,'defaultUicontrolBackgroundColor'))
     set(hObject,'BackgroundColor','white');
 end
 
 % --- Executes on slider movement.
 function Elderly_Callback(hObject, eventdata, handles)
-% hObject    handle to Elderly (see GCBO)
-% eventdata  reserved - to be defined in a future version of MATLAB
-% handles    structure with handles and user data (see GUIDATA)
-
-% Hints: get(hObject,'Value') returns position of slider
-%        get(hObject,'Min') and get(hObject,'Max') to determine range of slider
 Elderly = get( hObject, 'Value' );
 set( handles.ElderlyOut, 'String', sprintf( '%.0f%s', Elderly*100, '%' ) );
 
 % --- Executes during object creation, after setting all properties.
 function Elderly_CreateFcn(hObject, eventdata, handles)
-% hObject    handle to Elderly (see GCBO)
-% eventdata  reserved - to be defined in a future version of MATLAB
-% handles    empty - handles not created until after all CreateFcns called
-
-% Hint: slider controls usually have a light gray background.
 if isequal(get(hObject,'BackgroundColor'), get(0,'defaultUicontrolBackgroundColor'))
     set(hObject,'BackgroundColor',[.9 .9 .9]);
 end
 
 % --- Executes on slider movement.
 function Recover_Callback(hObject, eventdata, handles)
-% hObject    handle to Recover (see GCBO)
-% eventdata  reserved - to be defined in a future version of MATLAB
-% handles    structure with handles and user data (see GUIDATA)
-
-% Hints: get(hObject,'Value') returns position of slider
-%        get(hObject,'Min') and get(hObject,'Max') to determine range of slider
 Recover = get( hObject, 'Value' );
 set( handles.RecoverOut, 'String', sprintf( '%.0f%s', Recover*100, '%' ) );
 
 % --- Executes during object creation, after setting all properties.
 function Recover_CreateFcn(hObject, eventdata, handles)
-% hObject    handle to Recover (see GCBO)
-% eventdata  reserved - to be defined in a future version of MATLAB
-% handles    empty - handles not created until after all CreateFcns called
-
-% Hint: slider controls usually have a light gray background.
 if isequal(get(hObject,'BackgroundColor'), get(0,'defaultUicontrolBackgroundColor'))
     set(hObject,'BackgroundColor',[.9 .9 .9]);
 end
 
 % --- Executes on slider movement.
 function ElderlyDeath_Callback(hObject, eventdata, handles)
-% hObject    handle to ElderlyDeath (see GCBO)
-% eventdata  reserved - to be defined in a future version of MATLAB
-% handles    structure with handles and user data (see GUIDATA)
-
-% Hints: get(hObject,'Value') returns position of slider
-%        get(hObject,'Min') and get(hObject,'Max') to determine range of slider
 ElderlyDeath = get( hObject, 'Value' );
 set( handles.ElderlyDeathOut, 'String', sprintf( '%.0f%s', ElderlyDeath*100, '%' ) );
 
 % --- Executes during object creation, after setting all properties.
 function ElderlyDeath_CreateFcn(hObject, eventdata, handles)
-% hObject    handle to ElderlyDeath (see GCBO)
-% eventdata  reserved - to be defined in a future version of MATLAB
-% handles    empty - handles not created until after all CreateFcns called
-
-% Hint: slider controls usually have a light gray background.
 if isequal(get(hObject,'BackgroundColor'), get(0,'defaultUicontrolBackgroundColor'))
     set(hObject,'BackgroundColor',[.9 .9 .9]);
 end
 
 function R0_Callback(hObject, eventdata, handles)
-% hObject    handle to R0 (see GCBO)
-% eventdata  reserved - to be defined in a future version of MATLAB
-% handles    structure with handles and user data (see GUIDATA)
+R        = str2double( get( handles.R0, 'String' ) );
+gamma    = 1/str2double( get( handles.tau_rec, 'String' ) );
+dOldRate = get( handles.ElderlyDeath, 'Value' );
+oldPop   = get( handles.Elderly, 'Value' );
+dRate    = 1 - get( handles.Recover, 'Value' );
+sigma    = get( handles.Sigma, 'Value' );
 
-% Hints: get(hObject,'String') returns contents of R0 as text
-%        str2double(get(hObject,'String')) returns contents of R0 as a double
-handles.R = str2double( get( hObject, 'String' ) );
-set( handles.Beta, 'String', num2str( handles.R / handles.t_rec ) );
+Delta = gamma * (dOldRate*oldPop + dRate*(1-oldPop));
+beta  = R * (gamma + Delta);
+set( handles.Beta, 'String', sprintf( '%0.2f', beta ) );
 guidata( hObject, handles );
+
 
 % --- Executes during object creation, after setting all properties.
 function R0_CreateFcn(hObject, eventdata, handles)
-% hObject    handle to R0 (see GCBO)
-% eventdata  reserved - to be defined in a future version of MATLAB
-% handles    empty - handles not created until after all CreateFcns called
-
-% Hint: edit controls usually have a white background on Windows.
-%       See ISPC and COMPUTER.
 if ispc && isequal(get(hObject,'BackgroundColor'), get(0,'defaultUicontrolBackgroundColor'))
     set(hObject,'BackgroundColor','white');
 end
 
 function tau_inc_Callback(hObject, eventdata, handles)
-% hObject    handle to tau_inc (see GCBO)
-% eventdata  reserved - to be defined in a future version of MATLAB
-% handles    structure with handles and user data (see GUIDATA)
-
-% Hints: get(hObject,'String') returns contents of tau_inc as text
-%        str2double(get(hObject,'String')) returns contents of tau_inc as a double
-handles.t_inc = str2double( get( hObject, 'String' ) );
-set( handles.Alpha, 'String', num2str( 1 / handles.t_inc ) );
+alpha = 1/str2double( get( handles.tau_inc, 'String' ) );
+set( handles.Alpha, 'String', sprintf( '%0.2f', alpha ) );
 guidata( hObject, handles );
 
 % --- Executes during object creation, after setting all properties.
 function tau_inc_CreateFcn(hObject, eventdata, handles)
-% hObject    handle to tau_inc (see GCBO)
-% eventdata  reserved - to be defined in a future version of MATLAB
-% handles    empty - handles not created until after all CreateFcns called
-
-% Hint: edit controls usually have a white background on Windows.
-%       See ISPC and COMPUTER.
-if ispc && isequal(get(hObject,'BackgroundColor'), get(0,'defaultUicontrolBackgroundColor'))
-    set(hObject,'BackgroundColor','white');
-end
-
-function tau_inf_Callback(hObject, eventdata, handles)
-% hObject    handle to tau_inf (see GCBO)
-% eventdata  reserved - to be defined in a future version of MATLAB
-% handles    structure with handles and user data (see GUIDATA)
-
-% Hints: get(hObject,'String') returns contents of tau_inf as text
-%        str2double(get(hObject,'String')) returns contents of tau_inf as a double
-% handles.t_inf = str2double( get( hObject, 'String' ) );
-
-guidata( hObject, handles );
-
-% --- Executes during object creation, after setting all properties.
-function tau_inf_CreateFcn(hObject, eventdata, handles)
-% hObject    handle to tau_inf (see GCBO)
-% eventdata  reserved - to be defined in a future version of MATLAB
-% handles    empty - handles not created until after all CreateFcns called
-
-% Hint: edit controls usually have a white background on Windows.
-%       See ISPC and COMPUTER.
 if ispc && isequal(get(hObject,'BackgroundColor'), get(0,'defaultUicontrolBackgroundColor'))
     set(hObject,'BackgroundColor','white');
 end
 
 function tau_rec_Callback(hObject, eventdata, handles)
-% hObject    handle to tau_rec (see GCBO)
-% eventdata  reserved - to be defined in a future version of MATLAB
-% handles    structure with handles and user data (see GUIDATA)
+R        = str2double( get( handles.R0, 'String' ) );
+gamma    = 1/str2double( get( handles.tau_rec, 'String' ) );
+dOldRate = get( handles.ElderlyDeath, 'Value' );
+oldPop   = get( handles.Elderly, 'Value' );
+dRate    = 1 - get( handles.Recover, 'Value' );
+sigma    = get( handles.Sigma, 'Value' );
 
-% Hints: get(hObject,'String') returns contents of tau_rec as text
-%        str2double(get(hObject,'String')) returns contents of tau_rec as a double
-handles.t_rec = str2double( get( hObject, 'String' ) );
-set( handles.Gamma, 'String', num2str( 1 / handles.t_rec ) );
-set( handles.Beta, 'String', num2str( handles.R / handles.t_rec ) );
+Delta = gamma * (dOldRate*oldPop + dRate*(1-oldPop));
+beta  = R * (gamma + Delta);
+set( handles.Beta, 'String', sprintf( '%0.2f', beta ) );
+set( handles.Gamma, 'String', sprintf( '%0.2f', gamma ) );
 guidata( hObject, handles );
 
 % --- Executes during object creation, after setting all properties.
 function tau_rec_CreateFcn(hObject, eventdata, handles)
-% hObject    handle to tau_rec (see GCBO)
-% eventdata  reserved - to be defined in a future version of MATLAB
-% handles    empty - handles not created until after all CreateFcns called
-
-% Hint: edit controls usually have a white background on Windows.
-%       See ISPC and COMPUTER.
 if ispc && isequal(get(hObject,'BackgroundColor'), get(0,'defaultUicontrolBackgroundColor'))
     set(hObject,'BackgroundColor','white');
 end
 
 function n_Callback(hObject, eventdata, handles)
-% hObject    handle to n (see GCBO)
-% eventdata  reserved - to be defined in a future version of MATLAB
-% handles    structure with handles and user data (see GUIDATA)
 
-% Hints: get(hObject,'String') returns contents of n as text
-%        str2double(get(hObject,'String')) returns contents of n as a double
 
 % --- Executes during object creation, after setting all properties.
 function n_CreateFcn(hObject, eventdata, handles)
-% hObject    handle to n (see GCBO)
-% eventdata  reserved - to be defined in a future version of MATLAB
-% handles    empty - handles not created until after all CreateFcns called
-
-% Hint: edit controls usually have a white background on Windows.
-%       See ISPC and COMPUTER.
 if ispc && isequal(get(hObject,'BackgroundColor'), get(0,'defaultUicontrolBackgroundColor'))
     set(hObject,'BackgroundColor','white');
 end
 
 % --- Executes on button press in PB1.
 function PB1_Callback(hObject, eventdata, handles)
-% hObject    handle to PB1 (see GCBO)
-% eventdata  reserved - to be defined in a future version of MATLAB
-% handles    structure with handles and user data (see GUIDATA)
 clc;
 
 N       = str2double( get( handles.N, 'String' ) );
@@ -362,12 +233,24 @@ dOldRate= get( handles.ElderlyDeath, 'Value' );
 rOldRate= 1 - dOldRate;
 
 n       = str2num( get( handles.n, 'String' ) );
-tau_inc = str2double( get( handles.tau_inc, 'String' ) );
-tau_rec = str2double( get( handles.tau_rec, 'String' ) );
+alpha   = 1 / str2double( get( handles.tau_inc, 'String' ) );
+gamma   = 1 / str2double( get( handles.tau_rec, 'String' ) );
+sigma   = get( handles.Sigma, 'Value' );
 simTime = str2double( get( handles.simTime, 'String' ) );
 
-Hi = 1 + handles.tol;
-Lo = 1 - handles.tol;
+delta   = gamma;
+Delta   = delta * ( dOldRate*oldPop + dRate*otherPop );
+beta    = R0 * (gamma + Delta);
+
+tau_sigmapre  = str2double( get( handles.tau_sigmapre, 'String' ) );
+tau_sigmapost = str2double( get( handles.tau_sigmapost, 'String' ) );
+
+xi     = get( handles.Resusceptible, 'Value' ) / 100;
+tau_xi = str2double( get( handles.tau_xi, 'String' ) );
+
+tol = 0.05;
+Hi  = 1 + tol;
+Lo  = 1 - tol;
 
 D_init  = 0;
 R_init  = 0;
@@ -375,59 +258,68 @@ I_init  = n;
 E_init  = 20 * I_init;
 S_init  = N - I_init - E_init - D_init - R_init;
 
-alpha   = 1 / tau_inc;
-gamma   = 1 / tau_rec;
-beta    = R0 * gamma;
-delta   = gamma;
+% % NISA
+% D_init  = 84.2034;
+% R_init  = 772.5085;
+% I_init  = 1.4594e+03;
+% E_init  = 915.6255; %20 * I_init;
+% S_init  = N - I_init - E_init - D_init - R_init;
+% R0      = 2.9; %2.805;
+% load NINew;
 
-sigma = get( handles.Sigma, 'Value' )';
-tau_sigmapre  = str2double( get( handles.tau_sigmapre, 'String' ) );
-tau_sigmapost = str2double( get( handles.tau_sigmapost, 'String' ) );
+% % KoreaSA
+% I_init = 7.2662e+03;
+% D_init = 143.8303;
+% R_init = 6.2535e+03;
+% E_init = 1.7200e+03;
+% S_init  = N - I_init - E_init - D_init - R_init;
+% R0      = 0.612;
+% load Korea1;
+% subplot( 1,1,1, 'Parent', handles.axes1 );
+% hold on;
+% plot( out.I.Time(1:54), out.I.Data(1:54), 'Linewidth', 3 );
+% subplot( 1,1,1, 'Parent', handles.axes2 );
+% hold on;
+% plot( out.I.Time(1:54), out.I.Data(1:54), 'Linewidth', 3 );
 
-xi     = get( handles.Resusceptible, 'Value' )/100;
-tau_xi = str2double( get( handles.tau_xi, 'String' ) );
-
-matA = [0 0 0 0 0; 
-    0 -alpha 0 0 0; 
-    0 alpha -gamma-delta*(dOldRate*oldPop+dRate*otherPop) 0 0;
-    0 0 gamma 0 0;
-    0 0 delta*(dOldRate*oldPop+dRate*otherPop) 0 0];
-matB1 = [sigma*beta/N; -sigma*beta/N; 0; 0; 0];
-matB2 = [xi; 0; 0; -xi; 0];
-matB3 = [-beta/N; beta/N; 0; 0; 0];
-matB3Hi = matB3*Hi;
-matB3Lo = matB3*Lo;
-matC  = eye( 5 );
-
-assignin( 'base', 'matA', matA );
-assignin( 'base', 'matB1', matB1 );
-assignin( 'base', 'matB2', matB2 );
-assignin( 'base', 'matB3', matB3 );
-assignin( 'base', 'matB3Hi', matB3Hi );
-assignin( 'base', 'matB3Lo', matB3Lo );
-assignin( 'base', 'matC', matC );
-
+assignin( 'base', 'N', N );
+assignin( 'base', 'n', n );
+assignin( 'base', 'oldPop', oldPop );
+assignin( 'base', 'otherPop', otherPop );
+assignin( 'base', 'rRate', rRate );
+assignin( 'base', 'dRate', dRate );
+assignin( 'base', 'dOldRate', dOldRate );
+assignin( 'base', 'rOldRate', rOldRate );
+assignin( 'base', 'Hi', Hi );
+assignin( 'base', 'Lo', Lo );
+assignin( 'base', 'alpha', alpha );
+assignin( 'base', 'gamma', gamma );
+assignin( 'base', 'delta', delta );
+assignin( 'base', 'beta', beta );
 assignin( 'base', 'I_init', I_init );
 assignin( 'base', 'E_init', E_init );
 assignin( 'base', 'S_init', S_init );
 assignin( 'base', 'D_init', D_init );
 assignin( 'base', 'R_init', R_init );
+assignin( 'base', 'sigma', sigma );
 assignin( 'base', 'tau_sigmapre', tau_sigmapre );
 assignin( 'base', 'tau_sigmapost', tau_sigmapost );
+assignin( 'base', 'xi', xi );
 assignin( 'base', 'tau_xi', tau_xi );
 
-load_system( 'COVID_mod' );
-out = sim( 'COVID_mod', simTime );
-close_system( 'COVID_mod' );
+load_system( 'COVID_mod.mdl' );
+out = sim( 'COVID_mod.mdl', simTime );
+close_system( 'COVID_mod.mdl' );
 
 assignin( 'base', 'out', out );
 
-subplot( 1,1,1, 'Parent', handles.axes1 ); 
+subplot( 1,1,1, 'Parent', handles.axes1 );
 hold on;
 
 colour = ['b'; 'r'; 'g'; 'y'; 'm'; 'c'];
-if handles.colourCount > 6
-    handles.colourCount = handles.colourCount - 6;
+% colour = get( gca, 'ColorOrder' );
+if handles.colourCount > size( colour, 1 )
+    handles.colourCount = handles.colourCount - size( colour, 1 );
 end
 
 plot( out.I.Time+handles.firstCase, out.I.Data, 'Linewidth', 3 );
@@ -436,9 +328,14 @@ plot( out.D.Time+handles.firstCase, out.D.Data, 'Linewidth', 3 );
 jbfill( [out.D.Time+handles.firstCase]', [out.DHi.Data]', [out.DLo.Data]', colour(handles.colourCount+1) );
 xlabel( 'Days' );
 ylabel( 'Number of Cases' );
-textStr = sprintf( '$$ \\begin{array}{l} R_0 = %.1f, \\beta = %.3f, \\alpha = %.3f, \\gamma = %.3f \\\\  N_{old} = %.0f\\%%, \\kappa = %.0f\\%%, (1-\\kappa)_{old} = %.0f\\%% \\\\ \\sigma = %.0f\\%%, \\tau_{pre-\\sigma} = %d, \\tau_{post-\\sigma} = %d, \\\\ \\xi = %.2f\\%%, \\tau_\\xi = %d \\end{array} $$',...
+if sigma == 0
+    textStr = sprintf( '$$ \\begin{array}{l} R_0 = %.1f, \\beta = %.2f, \\alpha = %.2f, \\gamma = %.2f \\\\  N_{old} = %.0f\\%%, \\kappa = %.0f\\%%, (1-\\kappa)_{old} = %.0f\\%% \\\\ \\sigma = %.0f\\%%, \\tau_{pre-\\sigma} = %d, \\tau_{post-\\sigma} = %d, \\\\ \\xi = %.2f\\%%, \\tau_\\xi = %d \\end{array} $$',...
     R0, beta, alpha, gamma, oldPop*100, rRate*100, dOldRate*100, sigma*100, tau_sigmapre, tau_sigmapost, xi*100, tau_xi );
-text( out.I.Time( find( out.I.Data == max( out.I.Data ) ) ) + 0.05*simTime, 0.95 * max( out.I.Data ), textStr, 'Interpreter', 'latex' );
+else
+    textStr = sprintf( '$$ \\begin{array}{l} R_0 = %.1f, \\beta = %.2f, \\alpha = %.2f, \\gamma = %.2f \\\\  N_{old} = %.0f\\%%, \\kappa = %.0f\\%%, (1-\\kappa)_{old} = %.0f\\%% \\\\ \\sigma = %.0f\\%%, \\tau_{pre-\\sigma} = %d, \\tau_{post-\\sigma} = %d, \\\\ \\xi = %.2f\\%%, \\tau_\\xi = %d \\\\ \\mbox{Post-control } R_0 = %.2f \\end{array} $$',...
+    R0, beta, alpha, gamma, oldPop*100, rRate*100, dOldRate*100, sigma*100, tau_sigmapre, tau_sigmapost, xi*100, tau_xi, R0 * (1 - sigma) );
+end
+text( out.I.Time( find( out.I.Data == max( out.I.Data ) ) ) + 0.05*simTime, 0.9 * max( out.I.Data ), textStr, 'Interpreter', 'latex', 'FontSize', 14 );
 
 handles.legendStr1{end+1,1} = sprintf( 'Infected, R_0 = %.1f (Model Case %d)', R0, handles.count );
 handles.legendStr1{end+1,1} = sprintf( 'Infected, R_0 = %.1f (95%% CI) (Model Case %d)', R0, handles.count );
@@ -447,7 +344,8 @@ handles.legendStr1{end+1,1} = sprintf( 'Cum. Deaths, R_0 = %.1f (95%% CI) (Model
 
 legend( handles.legendStr1 );
 grid on;
-axis( [-inf simTime -inf inf] );
+% axis( [-inf simTime -inf inf] );
+xlim( [0 simTime] );
 
 if get( handles.stockData, 'Value' ) > 1
     subplot( 1,1,1, 'Parent', handles.axes2 );
@@ -455,18 +353,17 @@ if get( handles.stockData, 'Value' ) > 1
     jbfill( [out.I.Time+handles.firstCase]', [out.IHi.Data]', [out.ILo.Data]', colour(handles.colourCount) );
     plot( out.D.Time+handles.firstCase, out.D.Data, 'Linewidth', 3 );
     jbfill( [out.D.Time+handles.firstCase]', [out.DHi.Data]', [out.DLo.Data]', colour(handles.colourCount+1) );
-%     plot( out.R, 'Linewidth', 2 );
     xlabel( 'Days' );
-    ylabel( 'Number of Cases' );    
+    ylabel( 'Number of Cases' );
     title( ' ' );
     
     handles.legendStr2{end+1,1} = sprintf( 'Infected, R_0 = %.1f (Model Case %d)', R0, handles.count );
-    handles.legendStr2{end+1,1} = sprintf( 'Infected, R_0 = %.1f (95%% CI) (Model Case %d)', R0, handles.count ); 
+    handles.legendStr2{end+1,1} = sprintf( 'Infected, R_0 = %.1f (95%% CI) (Model Case %d)', R0, handles.count );
     handles.legendStr2{end+1,1} = sprintf( 'Cum. Deaths, R_0 = %.1f (Model Case %d)', R0, handles.count );
-    handles.legendStr2{end+1,1} = sprintf( 'Cum. Deaths, R_0 = %.1f (95%% CI) (Model Case %d)', R0, handles.count ); 
+    handles.legendStr2{end+1,1} = sprintf( 'Cum. Deaths, R_0 = %.1f (95%% CI) (Model Case %d)', R0, handles.count );
     
     legend( handles.legendStr2 );
-    axis( [-inf handles.sizeData+10  0 handles.maxData*2] );
+    axis( [-inf handles.sizeData+10  0 handles.maxData*1.5] );
 end
 
 handles.count = handles.count + 1;
@@ -476,21 +373,10 @@ guidata( hObject, handles );
 
 
 function simTime_Callback(hObject, eventdata, handles)
-% hObject    handle to simTime (see GCBO)
-% eventdata  reserved - to be defined in a future version of MATLAB
-% handles    structure with handles and user data (see GUIDATA)
 
-% Hints: get(hObject,'String') returns contents of simTime as text
-%        str2double(get(hObject,'String')) returns contents of simTime as a double
 
 % --- Executes during object creation, after setting all properties.
 function simTime_CreateFcn(hObject, eventdata, handles)
-% hObject    handle to simTime (see GCBO)
-% eventdata  reserved - to be defined in a future version of MATLAB
-% handles    empty - handles not created until after all CreateFcns called
-
-% Hint: edit controls usually have a white background on Windows.
-%       See ISPC and COMPUTER.
 if ispc && isequal(get(hObject,'BackgroundColor'), get(0,'defaultUicontrolBackgroundColor'))
     set(hObject,'BackgroundColor','white');
 end
@@ -498,9 +384,6 @@ end
 
 % --- Executes on button press in CLA.
 function CLA_Callback(hObject, eventdata, handles)
-% hObject    handle to CLA (see GCBO)
-% eventdata  reserved - to be defined in a future version of MATLAB
-% handles    structure with handles and user data (see GUIDATA)
 subplot( 1,1,1, 'Parent', handles.axes1 ); cla reset;
 subplot( 1,1,1, 'Parent', handles.axes2 ); cla reset;
 set( handles.stockData, 'Value', 1 );
@@ -509,19 +392,12 @@ handles.colourCount = 1;
 guidata(hObject, handles);
 handles.legendStr1 = {};
 handles.legendStr2 = {};
-handles.tol = 0.05;
 handles.resetCount = handles.resetCount + 1;
 guidata( hObject, handles );
 
 
 % --- Executes on selection change in stockData.
 function stockData_Callback(hObject, eventdata, handles)
-% hObject    handle to stockData (see GCBO)
-% eventdata  reserved - to be defined in a future version of MATLAB
-% handles    structure with handles and user data (see GUIDATA)
-
-% Hints: contents = cellstr(get(hObject,'String')) returns stockData contents as cell array
-%        contents{get(hObject,'Value')} returns selected item from stockData
 stockData = get( hObject, 'Value' );
 if handles.resetCount >= 2
     if stockData == 2 % UK
@@ -539,14 +415,14 @@ if handles.resetCount >= 2
         set( handles.N, 'String', '1880000' );
         set( handles.Elderly, 'Value', 0.18 );
         set( handles.ElderlyOut, 'String', '18%' );
-        set( handles.Recover, 'Value', 0.94 );
-        set( handles.RecoverOut, 'String', '94%' );
+        set( handles.Recover, 'Value', 0.89 );
+        set( handles.RecoverOut, 'String', '89%' );
         set( handles.ElderlyDeath, 'Value', 0.12 );
         set( handles.ElderlyDeathOut, 'String', '12%' );
         set( handles.R0, 'String', '5' );
         set( handles.n, 'String', '3' );
-        handles.tol = 0.03;
-        handles.firstCase = 9;
+        handles.tol = 0.05;
+        handles.firstCase = 6;
     elseif stockData == 4 % Italy
         set( handles.N, 'String', '60500000' );
         set( handles.Elderly, 'Value', 0.23 );
@@ -566,9 +442,9 @@ if handles.resetCount >= 2
         set( handles.RecoverOut, 'String', '98%' );
         set( handles.ElderlyDeath, 'Value', 0.04 );
         set( handles.ElderlyDeathOut, 'String', '4%' );
-        set( handles.R0, 'String', '5.2' );
+        set( handles.R0, 'String', '5.1' );
         set( handles.n, 'String', '4' );
-        handles.tol = 0.03;
+        handles.tol = 0.05;
         handles.firstCase = 0;
     elseif stockData == 6 % Sweden
         set( handles.N, 'String', '10500000' );
@@ -583,18 +459,31 @@ if handles.resetCount >= 2
         handles.firstCase = 8;
     end
 end
-set( handles.Beta, 'String', num2str( sprintf( '%.3f', str2num( get( handles.R0, 'String' ) ) * str2num( get( handles.Gamma, 'String' ) ) ) ) );
+
+R        = str2double( get( handles.R0, 'String' ) );
+gamma    = 1/str2double( get( handles.tau_rec, 'String' ) );
+dOldRate = get( handles.ElderlyDeath, 'Value' );
+oldPop   = get( handles.Elderly, 'Value' );
+dRate    = 1 - get( handles.Recover, 'Value' );
+sigma    = get( handles.Sigma, 'Value' );
+
+Delta = gamma * (dOldRate*oldPop + dRate*(1-oldPop));
+beta  = R * (gamma + Delta);
+set( handles.Beta, 'String', sprintf( '%0.2f', beta ) );
+set( handles.Gamma, 'String', sprintf( '%0.2f', gamma ) );
+
 
 if stockData > 1
-    subplot( 1,1,1, 'Parent', handles.axes1 ); 
+    subplot( 1,1,1, 'Parent', handles.axes1 );
     hold on;
     
     country = handles.stockDataStr{stockData-1};
-
+    
     if strcmp( country, 'NorthernIreland' )
         dataConfirmed = importdata( 'covid-19-totals-northern-ireland.csv' );
-        yCases        = [dataConfirmed.data(:,2:3) zeros( size( dataConfirmed.data, 1 ),1 )];
-        Date          = {dataConfirmed.textdata{:,1}};
+%         dataConfirmed = importdata( 'NI.csv' );
+        yCases        = [dataConfirmed.data(24:end,2:3) zeros( size( dataConfirmed.data, 1 )-23,1 )];
+        Date          = {dataConfirmed.textdata{24:end,1}};
     else
         dataConfirmed = importdata( 'time_series_covid19_confirmed_global.csv' );
         countryLoc    = find( strcmp( {dataConfirmed.textdata{:,2}}, country ) & strcmp( {dataConfirmed.textdata{:,1}}, '' ) );
@@ -606,20 +495,20 @@ if stockData > 1
         
         dataRecovered  = importdata( 'time_series_covid19_recovered_global.csv' );
         countryLoc     = find( strcmp( {dataRecovered.textdata{:,2}}, country ) & strcmp( {dataRecovered.textdata{:,1}}, '' ) );
-        yCases         = [yCases; [0 diff( dataRecovered.data(countryLoc - 1, 3:end) )]];
+        yCases         = [yCases; [( dataRecovered.data(countryLoc - 1, 3:end) )]];
         
         yCases = yCases';
         Date   = {dataConfirmed.textdata{1,5:end}};
     end
     
-    assignin( 'base', 'Infected', yCases(:,1) );
+    assignin( 'base', 'Infected', ( yCases(:,1) ) );
     assignin( 'base', 'Deaths', yCases(:,2) );
     if size( yCases, 2 ) == 3
         assignin( 'base', 'Recovered', yCases(:,3) );
     end
     assignin( 'base', 'Date', Date );
     
-    plot( (1:length( yCases(:,1))), yCases(:,1), '*', 'Linewidth', 1 );
+    plot( (1:length( yCases(:,1))), ( yCases(:,1) - yCases(:,3) - yCases(:,2) ), '*', 'Linewidth', 1 );
     plot( (1:length( yCases(:,2))), yCases(:,2), 'o', 'Linewidth', 1 );
     xlabel( 'Days' );
     ylabel( 'Number of Cases' );
@@ -630,33 +519,25 @@ if stockData > 1
     
     subplot( 1,1,1, 'Parent', handles.axes2 );
     hold on;
-    plot( (1:length( yCases(:,1))), yCases(:,1) - yCases(:,3), '*', 'Linewidth', 1 );
+    plot( (1:length( yCases(:,1))), ( yCases(:,1) - yCases(:,3) - yCases(:,2) ), '*', 'Linewidth', 1 );
     plot( (1:length( yCases(:,2))), yCases(:,2), 'o', 'Linewidth', 1 );
-%     plot( (1:length( yCases(:,3)))-firstCase, yCases(:,3), '+', 'Linewidth', 1 );
     xlabel( 'Days' );
     ylabel( 'Number of Cases' );
     handles.legendStr2{end+1,1} = sprintf( 'Infected (%s)', country );
     handles.legendStr2{end+1,1} = sprintf( 'Cumulated Deaths (%s)', country );
-%     handles.legendStr2{end+1,1} = sprintf( 'Recovered (%s)', country );
     leg2 = legend( handles.legendStr2 );
     leg2.Location = 'northwest';
     grid on;
     
     handles.maxData  = max( yCases(:,1) );
     handles.sizeData = length( yCases(:,1) );
-    axis( [-inf handles.sizeData+10  0 handles.maxData*2] );
+    axis( [-inf handles.sizeData+10  0 handles.maxData*1.5] );
 end
 
 guidata( hObject, handles );
 
 % --- Executes during object creation, after setting all properties.
 function stockData_CreateFcn(hObject, eventdata, handles)
-% hObject    handle to stockData (see GCBO)
-% eventdata  reserved - to be defined in a future version of MATLAB
-% handles    empty - handles not created until after all CreateFcns called
-
-% Hint: popupmenu controls usually have a white background on Windows.
-%       See ISPC and COMPUTER.
 if ispc && isequal(get(hObject,'BackgroundColor'), get(0,'defaultUicontrolBackgroundColor'))
     set(hObject,'BackgroundColor','white');
 end
@@ -664,70 +545,42 @@ end
 
 % --- Executes on slider movement.
 function Sigma_Callback(hObject, eventdata, handles)
-% hObject    handle to Sigma (see GCBO)
-% eventdata  reserved - to be defined in a future version of MATLAB
-% handles    structure with handles and user data (see GUIDATA)
-
-% Hints: get(hObject,'Value') returns position of slider
-%        get(hObject,'Min') and get(hObject,'Max') to determine range of slider
 sigma = get( hObject, 'Value' );
 set( handles.SigmaOut, 'String', sprintf( '%.0f%s', sigma*100, '%' ) );
 
+R        = str2double( get( handles.R0, 'String' ) );
+gamma    = 1/str2double( get( handles.tau_rec, 'String' ) );
+dOldRate = get( handles.ElderlyDeath, 'Value' );
+oldPop   = get( handles.Elderly, 'Value' );
+dRate    = 1 - get( handles.Recover, 'Value' );
+
+Delta = gamma * (dOldRate*oldPop + dRate*(1-oldPop));
+beta  = R * (gamma + Delta);
+set( handles.Beta, 'String', sprintf( '%0.2f', beta ) );
+set( handles.Gamma, 'String', sprintf( '%0.2f', gamma ) );
+
 % --- Executes during object creation, after setting all properties.
 function Sigma_CreateFcn(hObject, eventdata, handles)
-% hObject    handle to Sigma (see GCBO)
-% eventdata  reserved - to be defined in a future version of MATLAB
-% handles    empty - handles not created until after all CreateFcns called
-
-% Hint: slider controls usually have a light gray background.
 if isequal(get(hObject,'BackgroundColor'), get(0,'defaultUicontrolBackgroundColor'))
     set(hObject,'BackgroundColor',[.9 .9 .9]);
 end
 
 
 function tau_sigmapre_Callback(hObject, eventdata, handles)
-% hObject    handle to tau_sigmapre (see GCBO)
-% eventdata  reserved - to be defined in a future version of MATLAB
-% handles    structure with handles and user data (see GUIDATA)
-
-% Hints: get(hObject,'String') returns contents of tau_sigmapre as text
-%        str2double(get(hObject,'String')) returns contents of tau_sigmapre as a double
-handles.t_sigmapre = str2double( get( hObject, 'String' ) );
-
-guidata( hObject, handles );
 
 
 % --- Executes during object creation, after setting all properties.
 function tau_sigmapre_CreateFcn(hObject, eventdata, handles)
-% hObject    handle to tau_sigmapre (see GCBO)
-% eventdata  reserved - to be defined in a future version of MATLAB
-% handles    empty - handles not created until after all CreateFcns called
-
-% Hint: edit controls usually have a white background on Windows.
-%       See ISPC and COMPUTER.
 if ispc && isequal(get(hObject,'BackgroundColor'), get(0,'defaultUicontrolBackgroundColor'))
     set(hObject,'BackgroundColor','white');
 end
 
 
 function tau_sigmapost_Callback(hObject, eventdata, handles)
-% hObject    handle to tau_sigmapost (see GCBO)
-% eventdata  reserved - to be defined in a future version of MATLAB
-% handles    structure with handles and user data (see GUIDATA)
 
-% Hints: get(hObject,'String') returns contents of tau_sigmapost as text
-%        str2double(get(hObject,'String')) returns contents of tau_sigmapost as a double
-handles.t_sigmapost = str2double( get( hObject, 'String' ) );
-guidata( hObject, handles );
 
 % --- Executes during object creation, after setting all properties.
 function tau_sigmapost_CreateFcn(hObject, eventdata, handles)
-% hObject    handle to tau_sigmapost (see GCBO)
-% eventdata  reserved - to be defined in a future version of MATLAB
-% handles    empty - handles not created until after all CreateFcns called
-
-% Hint: edit controls usually have a white background on Windows.
-%       See ISPC and COMPUTER.
 if ispc && isequal(get(hObject,'BackgroundColor'), get(0,'defaultUicontrolBackgroundColor'))
     set(hObject,'BackgroundColor','white');
 end
@@ -735,46 +588,21 @@ end
 
 % --- Executes on slider movement.
 function Resusceptible_Callback(hObject, eventdata, handles)
-% hObject    handle to Resusceptible (see GCBO)
-% eventdata  reserved - to be defined in a future version of MATLAB
-% handles    structure with handles and user data (see GUIDATA)
-
-% Hints: get(hObject,'Value') returns position of slider
-%        get(hObject,'Min') and get(hObject,'Max') to determine range of slider
 Resusceptible = get( hObject, 'Value' );
 set( handles.ResusceptibleOut, 'String', sprintf( '%.2f%s', Resusceptible, '%' ) );
 
 % --- Executes during object creation, after setting all properties.
 function Resusceptible_CreateFcn(hObject, eventdata, handles)
-% hObject    handle to Resusceptible (see GCBO)
-% eventdata  reserved - to be defined in a future version of MATLAB
-% handles    empty - handles not created until after all CreateFcns called
-
-% Hint: slider controls usually have a light gray background.
 if isequal(get(hObject,'BackgroundColor'), get(0,'defaultUicontrolBackgroundColor'))
     set(hObject,'BackgroundColor',[.9 .9 .9]);
 end
 
 
 function tau_xi_Callback(hObject, eventdata, handles)
-% hObject    handle to tau_xi (see GCBO)
-% eventdata  reserved - to be defined in a future version of MATLAB
-% handles    structure with handles and user data (see GUIDATA)
 
-% Hints: get(hObject,'String') returns contents of tau_xi as text
-%        str2double(get(hObject,'String')) returns contents of tau_xi as a double
-handles.t_xi = str2double( get( hObject, 'String' ) );
-
-guidata( hObject, handles );
 
 % --- Executes during object creation, after setting all properties.
 function tau_xi_CreateFcn(hObject, eventdata, handles)
-% hObject    handle to tau_xi (see GCBO)
-% eventdata  reserved - to be defined in a future version of MATLAB
-% handles    empty - handles not created until after all CreateFcns called
-
-% Hint: edit controls usually have a white background on Windows.
-%       See ISPC and COMPUTER.
 if ispc && isequal(get(hObject,'BackgroundColor'), get(0,'defaultUicontrolBackgroundColor'))
     set(hObject,'BackgroundColor','white');
 end
@@ -782,18 +610,16 @@ end
 
 % --- Executes on button press in plotFigure.
 function plotFigure_Callback(hObject, eventdata, handles)
-% hObject    handle to plotFigure (see GCBO)
-% eventdata  reserved - to be defined in a future version of MATLAB
-% handles    structure with handles and user data (see GUIDATA)
-scrsz = get( 0,'ScreenSize' ); scrsz = scrsz(3:4);
-plotHandle1 = figure( 'position', [scrsz(1) / 2.4, scrsz(1) / 3.6, scrsz(1) / 1.8, scrsz(1) / 2.4],...
-    'NumberTitle', 'off' );
-existing   = findobj( handles.axes1, 'Type', 'axes' );
+scrsz       = get( 0,'ScreenSize' ); scrsz = scrsz(3:4);
+plotHandle1 = figure;
+existing    = findobj( handles.axes2, 'Type', 'axes' );
 copyobj( existing, plotHandle1 );
-legend( handles.legendStr1 ); %, 'Location', 'southoutside' );
+set( gca, 'fontsize', 14 );
 
-plotHandle2 = figure( 'position', [scrsz(1) / 2.4, scrsz(1) / 3.6, scrsz(1) / 1.8, scrsz(1) / 2.4],...
-    'NumberTitle', 'off' );
-existing   = findobj( handles.axes2, 'Type', 'axes' );
+legend( handles.legendStr1, 'Location', 'northoutside' );
+
+plotHandle2 = figure;
+existing    = findobj( handles.axes1, 'Type', 'axes' );
 copyobj( existing, plotHandle2 );
-legend( handles.legendStr2 ); %, 'Location', 'southoutside' );
+legend( handles.legendStr2, 'Location', 'Northoutside' );
+set( gca, 'fontsize', 14 );
