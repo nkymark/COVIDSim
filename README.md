@@ -19,13 +19,13 @@ If you use this simulation package in your research, please cite the following p
 ## Modelling the Dynamics of COVID-19 ##
 The model is a modified SEIRS model with consideration for ageing population in the population as well as time delay for the control action and potential resusceptibility due to temporal immunity. The model is defined using the equations below:
 
-<img src="/assets/Figures/COVID_model.png" width="450">
+<img src="/COVID_model.png" width="450">
 
 
 ## The Simulation Package ##
 The figure below shows the graphical user interface (GUI) of the simulation package developed using the MATLAB/Simulink environment. Users can use this interface to set preferred settings for the simulation and also to view simulation results.
 
-![](/assets/Figures/GUI_COVID.png)
+![](/GUI_COVID.png)
 ###### The main graphical user interface of the simulation package in Matlab. 􏰀1) Load real-world data for the selected country. 􏰀2) Set the stock population for simulation. 􏰀3) Set the percentage of recovered cases. 􏰀4) Set the fraction of elderly population. 􏰀5) Set the fatality rate for the elderly population. 􏰀6) Computed values for beta, alpha, and gamma. 􏰀7) Set the simulation time in days. 􏰀8) Set the value for the basic reproduction number *R_0*. 􏰀9) Set the initial number of infected cases *I(0)*. 􏰀10) Set the incubation time. 􏰀11) Set the recovery time. 􏰀12) Settings for recusceptibility, including the percentage of resusceptible cases and duration of temporal immunity. 􏰀13) Settings for control action, including the effeciency rate as well as the time delay during pre- and post-control action, respectively. 􏰀14) Reset the GUI and clear all plots. 􏰀15) Run the simulation. 􏰀16) Recreate the graphs on external Matlab figure windows. 􏰀17) Graphical plots from the simulation (left figure for overall simulation while right figure compare initial projections of the model with real-world data). ######  
 
 
