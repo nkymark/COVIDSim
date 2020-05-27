@@ -1,4 +1,4 @@
-# COVIDSim --- SEIRS-based COVID-19 Simulation Package #
+# COVIDSim — SEIRS-based COVID-19 Simulation Package #
 
 ## Table of Contents ##
   1. [Introduction](#introduction)
