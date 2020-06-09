@@ -13,7 +13,7 @@ The current global health emergency triggered by the pandemic COVID-19 is one of
 The simulation package is available free and as an open-source, and distribued under the [GNU license](https://en.wikipedia.org/wiki/GNU_General_Public_License).
 
 If you use this simulation package in your research, please cite the following publication:
-- K. Y. Ng and M. M. Gui (2020), COVID-19: Development of a Robust Mathematical Model and Simulation Package with Consideration for Ageing Population and Time Delay for Control Action and Resusceptibility, *Physica D: Nonlinear Phenomena (In Press)*. Preprint: [arXiv:2004.01974](https://arxiv.org/abs/2004.01974)
+- K. Y. Ng and M. M. Gui (2020), [COVID-19: Development of a robust mathematical model and simulation package with consideration for ageing population and time delay for control action and resusceptibility](https://doi.org/10.1016/j.physd.2020.132599), *Physica D: Nonlinear Phenomena*.
 
 
 ## Modelling the Dynamics of COVID-19 ##
