@@ -22,7 +22,7 @@ function varargout = covid(varargin)
 
 % Edit the above text to modify the response to help covid
 
-% Last Modified by GUIDE v2.5 24-May-2020 19:39:17
+% Last Modified by GUIDE v2.5 22-Jun-2020 15:18:20
 
 % Begin initialization code - DO NOT EDIT
 gui_Singleton = 1;
@@ -46,6 +46,21 @@ end
 
 % --- Executes just before covid is made visible.
 function covid_OpeningFcn(hObject, eventdata, handles, varargin)
+persistent fontSizeDecreased
+fontSizeDecreased = [];
+if ~ismac( )
+    % No MAC OSX detected; decrease font sizes
+    if isempty( fontSizeDecreased )
+        for afield = fieldnames(handles)'
+            afield = afield{1};
+            try
+                set( handles.(afield),'FontSize',get( handles.(afield),'FontSize' ) * 0.75 );
+            end
+        end
+        fontSizeDecreased = 1; % do not perform this step again.
+    end
+end
+
 clc;
 
 address = 'https://raw.githubusercontent.com/CSSEGISandData/COVID-19/master/csse_covid_19_data/csse_covid_19_time_series/time_series_covid19_confirmed_global.csv';
@@ -58,7 +73,7 @@ address = 'https://raw.githubusercontent.com/tomwhite/covid-19-uk-data/master/da
 websave( 'covid-19-totals-northern-ireland.csv', address );
 
 set( handles.stockData, 'Value', 1 );
-handles.stockDataStr = {'United Kingdom', 'NorthernIreland', 'Italy', 'Korea, South', 'Sweden'};
+handles.stockDataStr = {'United Kingdom', 'NorthernIreland', 'Italy', 'Korea, South', 'Sweden', 'Malaysia'};
 handles.legendStr1 = {};
 handles.legendStr2 = {};
 
@@ -457,6 +472,17 @@ if handles.resetCount >= 2
         set( handles.R0, 'String', '3.8' );
         set( handles.n, 'String', '2' );
         handles.firstCase = 8;
+    elseif stockData == 7 % Malaysia
+        set( handles.N, 'String', '32000000' );
+        set( handles.Elderly, 'Value', 0.065 );
+        set( handles.ElderlyOut, 'String', '65%' );
+        set( handles.Recover, 'Value', 0.986 );
+        set( handles.RecoverOut, 'String', '986%' );
+        set( handles.ElderlyDeath, 'Value', 0.05 );
+        set( handles.ElderlyDeathOut, 'String', '5%' );
+        set( handles.R0, 'String', '3.8' );
+        set( handles.n, 'String', '2' );
+        handles.firstCase = 3;
     end
 end
 
@@ -623,3 +649,17 @@ existing    = findobj( handles.axes1, 'Type', 'axes' );
 copyobj( existing, plotHandle2 );
 legend( handles.legendStr2, 'Location', 'Northoutside' );
 set( gca, 'fontsize', 14 );
+
+
+% --- Executes when figure1 is resized.
+function figure1_SizeChangedFcn(hObject, eventdata, handles)
+% hObject    handle to figure1 (see GCBO)
+% eventdata  reserved - to be defined in a future version of MATLAB
+% handles    structure with handles and user data (see GUIDATA)
+
+
+% --- Executes when axes1 is resized.
+function axes1_SizeChangedFcn(hObject, eventdata, handles)
+% hObject    handle to axes1 (see GCBO)
+% eventdata  reserved - to be defined in a future version of MATLAB
+% handles    structure with handles and user data (see GUIDATA)
