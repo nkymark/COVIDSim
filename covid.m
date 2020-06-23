@@ -476,8 +476,8 @@ if handles.resetCount >= 2
         set( handles.N, 'String', '32000000' );
         set( handles.Elderly, 'Value', 0.065 );
         set( handles.ElderlyOut, 'String', '65%' );
-        set( handles.Recover, 'Value', 0.986 );
-        set( handles.RecoverOut, 'String', '986%' );
+        set( handles.Recover, 'Value', 0.98 );
+        set( handles.RecoverOut, 'String', '98%' );
         set( handles.ElderlyDeath, 'Value', 0.05 );
         set( handles.ElderlyDeathOut, 'String', '5%' );
         set( handles.R0, 'String', '3.8' );
