@@ -475,7 +475,7 @@ if handles.resetCount >= 2
     elseif stockData == 7 % Malaysia
         set( handles.N, 'String', '32000000' );
         set( handles.Elderly, 'Value', 0.065 );
-        set( handles.ElderlyOut, 'String', '65%' );
+        set( handles.ElderlyOut, 'String', '6.5%' );
         set( handles.Recover, 'Value', 0.98 );
         set( handles.RecoverOut, 'String', '98%' );
         set( handles.ElderlyDeath, 'Value', 0.05 );
