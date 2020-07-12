@@ -30,7 +30,7 @@ The figure below shows the graphical user interface (GUI) of the simulation pack
 
 
 ## Download ##
-The simulation testbed can be downloaded [here](https://github.com/nkymark/COVIDSIM).
+The simulation package can be downloaded [here](https://github.com/nkymark/COVIDSIM).
 
 
 
