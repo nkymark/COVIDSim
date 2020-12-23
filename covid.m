@@ -324,7 +324,7 @@ assignin( 'base', 'tau_xi', tau_xi );
 
 load_system( 'COVID_mod.mdl' );
 out = sim( 'COVID_mod.mdl', simTime );
-close_system( 'COVID_mod.mdl' );
+bdclose( 'COVID_mod.mdl' );
 
 assignin( 'base', 'out', out );
 
